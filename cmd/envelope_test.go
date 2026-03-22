@@ -22,11 +22,11 @@ func TestEnvelope_Table(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		handler        fiber.Handler
-		expectStatus   int
-		validateBody   func(t *testing.T, body map[string]any)
-		expectRawBody  string
+		name          string
+		handler       fiber.Handler
+		expectStatus  int
+		validateBody  func(t *testing.T, body map[string]any)
+		expectRawBody string
 	}{
 		{
 			name: "json response is wrapped in envelope",

@@ -11,11 +11,11 @@ func TestBuildApp_Routes_Table(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		method      string
-		path        string
-		body        string
-		expectNot   int
+		name      string
+		method    string
+		path      string
+		body      string
+		expectNot int
 	}{
 		{name: "POST /sabotage registered", method: http.MethodPost, path: "/sabotage", expectNot: http.StatusMethodNotAllowed},
 		{name: "POST /plan/sabotage registered", method: http.MethodPost, path: "/plan/sabotage", expectNot: http.StatusMethodNotAllowed},

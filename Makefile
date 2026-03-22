@@ -1,4 +1,4 @@
-.PHONY: deps build run vet lint test coverage ci sabotage reset-sabotage help
+.PHONY: deps build run fmt vet lint test coverage ci sabotage reset-sabotage help
 
 BASE_URL ?= http://localhost:7777
 CODE     ?= 500
@@ -12,13 +12,16 @@ build: ## Compile binary to bin/server
 run: ## Run server locally
 	go run ./cmd/
 
+fmt: ## Format code with gofmt -s
+	gofmt -s -w .
+
 vet: ## Run go vet
 	go vet ./...
 
 lint: ## Run golangci-lint
 	golangci-lint run ./...
 
-ci: vet lint test ## Run vet, lint and tests (mirrors CI pipeline)
+ci: fmt vet lint test ## Run fmt, vet, lint and tests (mirrors CI pipeline)
 
 test: ## Run unit tests with race detector
 	go test -race ./...
