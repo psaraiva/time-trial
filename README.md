@@ -4,7 +4,7 @@
 [![Language: Português](https://img.shields.io/badge/Language-Portugu%C3%AAs-green?style=flat-square)](./README.pt-BR.md)
 
 [![CI](https://github.com/psaraiva/time-trial/actions/workflows/ci.yml/badge.svg)](https://github.com/psaraiva/time-trial/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/psaraiva/time-trial?style=flat)](https://goreportcard.com/report/github.com/psaraiva/time-trial?force=true)
+[![Go Report Card](https://goreportcard.com/badge/github.com/psaraiva/time-trial)](https://goreportcard.com/report/github.com/psaraiva/time-trial)
 [![codecov](https://codecov.io/gh/psaraiva/time-trial/branch/main/graph/badge.svg)](https://codecov.io/gh/psaraiva/time-trial)
 
 A minimal Go application that exposes endpoints to control a sabotage state — forcing specific HTTP status codes and delays in dependent services or tests.
