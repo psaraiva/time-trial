@@ -12,15 +12,16 @@ import (
 
 var validExecCodes = map[int]bool{200: true, 400: true, 500: true}
 
-func newExecApp(t *testing.T) (*fiber.App, *entities.State, *entities.Plan) {
+func newExecApp(t *testing.T) (*fiber.App, *entities.State, *entities.Plan, *entities.ParamResp) {
 	t.Helper()
 	state := entities.NewState()
 	plan := entities.NewPlan()
-	h := NewExecHandler(state, plan)
+	paramResp := entities.NewParamResp()
+	h := NewExecHandler(state, plan, paramResp)
 	app := fiber.New()
 	app.Get("/exec", h.Exec)
 	app.Get("/exec/plan", h.ExecPlan)
-	return app, state, plan
+	return app, state, plan, paramResp
 }
 
 func TestExecHandlerExec_Table(t *testing.T) {
@@ -69,7 +70,7 @@ func TestExecHandlerExec_Table(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			app, state, _ := newExecApp(t)
+			app, state, _, _ := newExecApp(t)
 			tc.setup(state)
 
 			req := httptest.NewRequest(http.MethodGet, "/exec", nil)
@@ -173,7 +174,7 @@ func TestExecHandlerExecPlan_Table(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			app, _, plan := newExecApp(t)
+			app, _, plan, _ := newExecApp(t)
 			tc.setup(plan)
 
 			req := httptest.NewRequest(http.MethodGet, "/exec/plan", nil)
@@ -213,6 +214,194 @@ func TestExecHandlerExecPlan_Table(t *testing.T) {
 			}
 			if sabotaged.(bool) != true {
 				t.Fatalf("expected sabotaged=true, got %v", sabotaged)
+			}
+		})
+	}
+}
+
+func TestExecHandlerExec_ParamResp(t *testing.T) {
+	t.Parallel()
+
+	paramConfig := &entities.ResponseConfig{
+		StatusCode: 200,
+		Item: entities.ItemConfig{
+			IsCollection: false,
+			Properties: []entities.Property{
+				{
+					PropertyBase: entities.PropertyBase{
+						Name: "label", Type: entities.PropertyTypeString,
+						IsRequired: true, MinLength: 3, MaxLength: 6,
+					},
+					PropertyString: &entities.PropertyStringConfig{Chars: "abcABC"},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name            string
+		stateCode       int32
+		paramRespActive bool
+		expectStatus    int
+		expectGenerated bool
+	}{
+		{
+			name:            "code 200 with param-resp active returns generated body",
+			stateCode:       200,
+			paramRespActive: true,
+			expectStatus:    http.StatusOK,
+			expectGenerated: true,
+		},
+		{
+			name:            "code 200 without param-resp returns standard body",
+			stateCode:       200,
+			paramRespActive: false,
+			expectStatus:    http.StatusOK,
+			expectGenerated: false,
+		},
+		{
+			name:            "code 500 with param-resp active returns standard body",
+			stateCode:       500,
+			paramRespActive: true,
+			expectStatus:    http.StatusInternalServerError,
+			expectGenerated: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			app, state, _, pr := newExecApp(t)
+			state.SetCode(tc.stateCode)
+			if tc.paramRespActive {
+				pr.Set(paramConfig)
+			}
+
+			req := httptest.NewRequest(http.MethodGet, "/exec", nil)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+
+			if resp.StatusCode != tc.expectStatus {
+				t.Fatalf("expected status %d, got %d", tc.expectStatus, resp.StatusCode)
+			}
+
+			var body map[string]any
+			if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+				t.Fatalf("unexpected decode error: %v", err)
+			}
+
+			if tc.expectGenerated {
+				if _, ok := body["label"]; !ok {
+					t.Fatal("expected generated field 'label' in body")
+				}
+				if _, ok := body["sabotaged"]; ok {
+					t.Fatal("expected no 'sabotaged' key in generated body")
+				}
+			} else {
+				if _, ok := body["sabotaged"]; !ok {
+					t.Fatal("expected 'sabotaged' key in standard body")
+				}
+			}
+		})
+	}
+}
+
+func TestExecHandlerExecPlan_ParamResp(t *testing.T) {
+	t.Parallel()
+
+	paramConfig := &entities.ResponseConfig{
+		StatusCode: 200,
+		Item: entities.ItemConfig{
+			IsCollection: true,
+			Quantity:     2,
+			Properties: []entities.Property{
+				{
+					PropertyBase: entities.PropertyBase{
+						Name: "id", Type: entities.PropertyTypeInt,
+						IsRequired: true, MinLength: 1, MaxLength: 100,
+					},
+					PropertyInt: &entities.PropertyIntConfig{IsAcceptNegativeValue: false},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name            string
+		planCode        int32
+		paramRespActive bool
+		expectStatus    int
+		expectArray     bool
+	}{
+		{
+			name:            "plan code 200 with param-resp returns generated collection",
+			planCode:        200,
+			paramRespActive: true,
+			expectStatus:    http.StatusOK,
+			expectArray:     true,
+		},
+		{
+			name:            "plan code 200 without param-resp returns standard body",
+			planCode:        200,
+			paramRespActive: false,
+			expectStatus:    http.StatusOK,
+			expectArray:     false,
+		},
+		{
+			name:            "plan code 400 with param-resp returns standard body",
+			planCode:        400,
+			paramRespActive: true,
+			expectStatus:    http.StatusBadRequest,
+			expectArray:     false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			app, _, plan, pr := newExecApp(t)
+			s := entities.NewState()
+			s.SetCode(tc.planCode)
+			plan.Set([]*entities.State{s})
+			if tc.paramRespActive {
+				pr.Set(paramConfig)
+			}
+
+			req := httptest.NewRequest(http.MethodGet, "/exec/plan", nil)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+
+			if resp.StatusCode != tc.expectStatus {
+				t.Fatalf("expected status %d, got %d", tc.expectStatus, resp.StatusCode)
+			}
+
+			if tc.expectArray {
+				var arr []any
+				if err := json.NewDecoder(resp.Body).Decode(&arr); err != nil {
+					t.Fatalf("expected array body, decode error: %v", err)
+				}
+				if len(arr) != 2 {
+					t.Fatalf("expected 2 items in collection, got %d", len(arr))
+				}
+			} else {
+				var body map[string]any
+				if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+					t.Fatalf("unexpected decode error: %v", err)
+				}
+				if _, ok := body["error"]; ok {
+					return
+				}
+				if _, ok := body["sabotaged"]; !ok {
+					t.Fatal("expected 'sabotaged' key in standard body")
+				}
 			}
 		})
 	}
@@ -276,7 +465,7 @@ func TestExecHandlerExecWithDelay_Table(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			app, state, _ := newExecApp(t)
+			app, state, _, _ := newExecApp(t)
 			state.SetCode(tc.code)
 			if err := state.SetDelay(tc.min, tc.max); err != nil {
 				t.Fatalf("unexpected SetDelay error: %v", err)
@@ -326,7 +515,7 @@ func TestExecPlanWithDelay_Table(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			app, _, plan := newExecApp(t)
+			app, _, plan, _ := newExecApp(t)
 			s := entities.NewState()
 			s.SetCode(tc.code)
 			if err := s.SetDelay(tc.min, tc.max); err != nil {

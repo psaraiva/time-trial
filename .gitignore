@@ -1,4 +1,5 @@
 .vscode
 .cli-rest
 /bin
+/doc
 coverage.*

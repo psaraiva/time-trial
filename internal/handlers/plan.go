@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/psaraiva/time-trial/internal/entities"
+	"github.com/psaraiva/time-trial/internal/generator"
 )
 
 type PlanHandler struct {
@@ -27,16 +30,15 @@ type planRequest struct {
 
 // SetPlan loads a new plan into memory or clears the active one if body is empty.
 //
-// POST /entities/plan
-//
-//	{
-//	  "plan": [
-//	    { "code": 500, "delayMin": 500,  "delayMax": 900 },
-//	    { "code": 200, "delayMin": 500,  "delayMax": 900 }
-//	  ]
-//	}
-//
-// POST /entities/plan (sem body) → limpa o plano ativo
+//	@Summary		Set or clear plan
+//	@Description	Loads an ordered list of sabotage steps. Steps are consumed in order on GET /plan/sabotage. With no body, clears the active plan (returns {active:false}).
+//	@Tags			plan
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		planRequest		false	"Ordered plan. Omit body to clear."
+//	@Success		200		{object}	EnvelopeSetPlan
+//	@Failure		400		{object}	EnvelopeError
+//	@Router			/plan [post]
 func (h *PlanHandler) SetPlan(c *fiber.Ctx) error {
 	if len(c.Body()) == 0 {
 		h.plan.Clear()
@@ -81,7 +83,13 @@ func (h *PlanHandler) SetPlan(c *fiber.Ctx) error {
 
 // GetConfig returns the full active plan if one exists, or 404 if not.
 //
-// GET /plan/config
+//	@Summary		Get plan configuration
+//	@Description	Returns all steps of the active plan regardless of how many have been consumed. Returns 404 if no plan is loaded.
+//	@Tags			plan
+//	@Produce		json
+//	@Success		200	{object}	EnvelopePlanConfig
+//	@Failure		404	{object}	EnvelopeError
+//	@Router			/plan/config [get]
 func (h *PlanHandler) GetConfig(c *fiber.Ctx) error {
 	states, ok := h.plan.IsActive()
 	if !ok {
@@ -104,4 +112,55 @@ func (h *PlanHandler) GetConfig(c *fiber.Ctx) error {
 		"active": true,
 		"steps":  steps,
 	})
+}
+
+// ExecPlan executes the next step of the active plan.
+//
+//	@Summary		Execute next plan step
+//	@Description	Consumes the next step from the active plan. Returns 404 if no plan is loaded, all steps are consumed, or the plan was interrupted.
+//	@Description	When step code=200 and a param-resp config is active, "data" is dynamically generated — its schema depends on the active configuration. See GET /param-resp/config.
+//	@Tags			plan
+//	@Produce		json
+//	@Success		200	{object}	EnvelopeDynamic			"data is either SabotageStateResponse or dynamically generated (see GET /param-resp/config)"
+//	@Failure		400	{object}	EnvelopeSabotageState
+//	@Failure		404	{object}	EnvelopeError
+//	@Failure		500	{object}	EnvelopeSabotageState
+//	@Router			/plan/sabotage [get]
+func (h *ExecHandler) ExecPlan(c *fiber.Ctx) error {
+	s, ok := h.plan.Next()
+	if !ok {
+		if h.plan.IsCancelled() {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"error": "plan interrupted",
+			})
+		}
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "no active plan or all steps have been consumed",
+		})
+	}
+
+	applyDelay(s)
+
+	code := int(s.GetCode())
+	if code == 200 && h.paramResp.IsActive() {
+		return c.Status(code).JSON(generator.Generate(h.paramResp.Get()))
+	}
+
+	return c.Status(code).JSON(fiber.Map{
+		"sabotaged": true,
+		"code":      s.GetCode(),
+	})
+}
+
+// applyDelay sleeps for a random duration within the state's delay range, if set.
+func applyDelay(s *entities.State) {
+	delayMin, delayMax := s.GetDelay()
+	if delayMax == 0 {
+		return
+	}
+	delay := delayMin
+	if delayMax > delayMin {
+		delay = delayMin + int32(rand.Intn(int(delayMax-delayMin+1)))
+	}
+	time.Sleep(time.Duration(delay) * time.Millisecond)
 }

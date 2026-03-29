@@ -17,12 +17,14 @@ func TestBuildApp_Routes_Table(t *testing.T) {
 		body      string
 		expectNot int
 	}{
-		{name: "POST /sabotage registered", method: http.MethodPost, path: "/sabotage", expectNot: http.StatusMethodNotAllowed},
-		{name: "POST /plan/sabotage registered", method: http.MethodPost, path: "/plan/sabotage", expectNot: http.StatusMethodNotAllowed},
+		{name: "POST /time-trial registered", method: http.MethodPost, path: "/time-trial", expectNot: http.StatusMethodNotAllowed},
+		{name: "GET /time-trial/config registered", method: http.MethodGet, path: "/time-trial/config", expectNot: http.StatusMethodNotAllowed},
+		{name: "POST /plan registered", method: http.MethodPost, path: "/plan", expectNot: http.StatusMethodNotAllowed},
 		{name: "GET /plan/config registered", method: http.MethodGet, path: "/plan/config", expectNot: http.StatusMethodNotAllowed},
-		{name: "GET /sabotage/exec registered", method: http.MethodGet, path: "/sabotage/exec", expectNot: http.StatusMethodNotAllowed},
-		{name: "GET /plan/exec registered", method: http.MethodGet, path: "/plan/exec", expectNot: http.StatusMethodNotAllowed},
-		{name: "GET /sabotage/config registered", method: http.MethodGet, path: "/sabotage/config", expectNot: http.StatusMethodNotAllowed},
+		{name: "GET /sabotage registered", method: http.MethodGet, path: "/sabotage", expectNot: http.StatusMethodNotAllowed},
+		{name: "GET /plan/sabotage registered", method: http.MethodGet, path: "/plan/sabotage", expectNot: http.StatusMethodNotAllowed},
+		{name: "POST /param-resp registered", method: http.MethodPost, path: "/param-resp", expectNot: http.StatusMethodNotAllowed},
+		{name: "GET /param-resp/config registered", method: http.MethodGet, path: "/param-resp/config", expectNot: http.StatusMethodNotAllowed},
 	}
 
 	app := buildApp()

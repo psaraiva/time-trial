@@ -23,13 +23,15 @@ type sabotageRequest struct {
 
 // SetSabotage sets or resets the forced HTTP status code and optional delay range.
 //
-// POST /sabotage
-//
-//	{
-//	  "code":     500,      // 0 (reset), 200, 400 or 500
-//	  "delayMin": 500,      // ms, optional (default 0), must be > 0 and < 1000 when set
-//	  "delayMax": 900       // ms, optional (default 0), must be > 0 and < 1000 when set
-//	}
+//	@Summary		Set sabotage configuration
+//	@Description	Sets the active forced status code and optional delay range. With no body, resets to random behavior (code=0, delays=0).
+//	@Tags			time-trial
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		sabotageRequest		false	"Sabotage configuration. Omit body to reset."
+//	@Success		200		{object}	EnvelopeSetSabotage
+//	@Failure		400		{object}	EnvelopeError
+//	@Router			/time-trial [post]
 func (h *SabotageHandler) SetSabotage(c *fiber.Ctx) error {
 	if len(c.Body()) == 0 {
 		h.state.Reset()
