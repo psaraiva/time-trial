@@ -15,7 +15,12 @@ func NewConfigHandler(state *entities.State) *ConfigHandler {
 
 // GetConfig returns the current sabotage configuration.
 //
-// GET /config
+//	@Summary		Get sabotage configuration
+//	@Description	Returns the active forced status code and delay range. code=0 means random behavior.
+//	@Tags			sabotage
+//	@Produce		json
+//	@Success		200	{object}	EnvelopeSabotageConfig
+//	@Router			/time-trial/config [get]
 func (h *ConfigHandler) GetConfig(c *fiber.Ctx) error {
 	code := h.state.GetCode()
 	delayMin, delayMax := h.state.GetDelay()

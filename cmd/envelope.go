@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -20,6 +21,10 @@ func envelope() fiber.Handler {
 
 		if err := c.Next(); err != nil {
 			return err
+		}
+
+		if strings.HasPrefix(c.Path(), "/swag") {
+			return nil
 		}
 
 		body := c.Response().Body()

@@ -15,6 +15,7 @@ func newEnvelopeApp(handler fiber.Handler) *fiber.App {
 	app := fiber.New()
 	app.Use(envelope())
 	app.Get("/", handler)
+	app.Get("/swag/*", handler)
 	return app
 }
 
@@ -27,6 +28,7 @@ func TestEnvelope_Table(t *testing.T) {
 		expectStatus  int
 		validateBody  func(t *testing.T, body map[string]any)
 		expectRawBody string
+		path          string
 	}{
 		{
 			name: "json response is wrapped in envelope",
@@ -72,6 +74,15 @@ func TestEnvelope_Table(t *testing.T) {
 			},
 			expectStatus: http.StatusInternalServerError,
 		},
+		{
+			name: "swag path bypasses envelope",
+			handler: func(c *fiber.Ctx) error {
+				return c.SendString("swagger ui")
+			},
+			expectStatus:  http.StatusOK,
+			expectRawBody: "swagger ui",
+			path:          "/swag/index.html",
+		},
 	}
 
 	for _, tc := range tests {
@@ -80,7 +91,11 @@ func TestEnvelope_Table(t *testing.T) {
 
 			app := newEnvelopeApp(tc.handler)
 
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			reqPath := "/"
+			if tc.path != "" {
+				reqPath = tc.path
+			}
+			req := httptest.NewRequest(http.MethodGet, reqPath, nil)
 			resp, err := app.Test(req)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

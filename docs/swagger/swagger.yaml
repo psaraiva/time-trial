@@ -1,0 +1,431 @@
+basePath: /
+definitions:
+  entities.ItemConfig:
+    properties:
+      isColection:
+        type: boolean
+      properties:
+        items:
+          $ref: '#/definitions/entities.Property'
+        type: array
+      quantity:
+        type: integer
+    type: object
+  entities.Property:
+    properties:
+      isRequired:
+        type: boolean
+      maxLength:
+        type: integer
+      minLength:
+        type: integer
+      name:
+        type: string
+      propertyFloat:
+        $ref: '#/definitions/entities.PropertyFloatConfig'
+      propertyInt:
+        $ref: '#/definitions/entities.PropertyIntConfig'
+      propertyString:
+        $ref: '#/definitions/entities.PropertyStringConfig'
+      type:
+        $ref: '#/definitions/entities.PropertyType'
+    type: object
+  entities.PropertyFloatConfig:
+    properties:
+      floatPrecision:
+        type: integer
+      isAcceptNegativeValue:
+        type: boolean
+    type: object
+  entities.PropertyIntConfig:
+    properties:
+      isAcceptNegativeValue:
+        type: boolean
+    type: object
+  entities.PropertyStringConfig:
+    properties:
+      chars:
+        type: string
+    type: object
+  entities.PropertyType:
+    enum:
+    - string
+    - int
+    - float
+    type: string
+    x-enum-varnames:
+    - PropertyTypeString
+    - PropertyTypeInt
+    - PropertyTypeFloat
+  entities.ResponseConfig:
+    properties:
+      item:
+        $ref: '#/definitions/entities.ItemConfig'
+      statusCode:
+        type: integer
+    type: object
+  handlers.EnvelopeDynamic:
+    properties:
+      data: {}
+      duration:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  handlers.EnvelopeError:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.ErrorResponse'
+      duration:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  handlers.EnvelopeParamRespConfig:
+    properties:
+      data:
+        $ref: '#/definitions/entities.ResponseConfig'
+      duration:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  handlers.EnvelopePlanConfig:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.PlanConfigResponse'
+      duration:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  handlers.EnvelopeSabotageConfig:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.SabotageConfigResponse'
+      duration:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  handlers.EnvelopeSabotageState:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.SabotageStateResponse'
+      duration:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  handlers.EnvelopeSetParamResp:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.SetParamRespResponse'
+      duration:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  handlers.EnvelopeSetPlan:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.SetPlanResponse'
+      duration:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  handlers.EnvelopeSetSabotage:
+    properties:
+      data:
+        $ref: '#/definitions/handlers.SetSabotageResponse'
+      duration:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  handlers.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  handlers.PlanConfigResponse:
+    properties:
+      active:
+        type: boolean
+      steps:
+        items:
+          $ref: '#/definitions/handlers.PlanStepConfig'
+        type: array
+    type: object
+  handlers.PlanStepConfig:
+    properties:
+      code:
+        type: integer
+      delayMax:
+        type: integer
+      delayMin:
+        type: integer
+    type: object
+  handlers.SabotageConfigResponse:
+    properties:
+      code:
+        type: integer
+      delayMax:
+        type: integer
+      delayMin:
+        type: integer
+      sabotaged:
+        type: boolean
+    type: object
+  handlers.SabotageStateResponse:
+    properties:
+      code:
+        type: integer
+      sabotaged:
+        type: boolean
+    type: object
+  handlers.SetParamRespResponse:
+    properties:
+      active:
+        type: boolean
+      properties:
+        type: integer
+      statusCode:
+        type: integer
+    type: object
+  handlers.SetPlanResponse:
+    properties:
+      active:
+        type: boolean
+      steps:
+        type: integer
+    type: object
+  handlers.SetSabotageResponse:
+    properties:
+      code:
+        type: integer
+      delayMax:
+        type: integer
+      delayMin:
+        type: integer
+      sabotaged:
+        type: boolean
+    type: object
+  handlers.planRequest:
+    properties:
+      plan:
+        items:
+          $ref: '#/definitions/handlers.planStepRequest'
+        type: array
+    type: object
+  handlers.planStepRequest:
+    properties:
+      code:
+        type: integer
+      delayMax:
+        type: integer
+      delayMin:
+        type: integer
+    type: object
+  handlers.sabotageRequest:
+    properties:
+      code:
+        type: integer
+      delayMax:
+        type: integer
+      delayMin:
+        type: integer
+    type: object
+host: localhost:7777
+info:
+  contact:
+    name: time-trial contributors
+  description: Minimal service for injecting controlled HTTP failures (status codes,
+    delays, dynamic response bodies) into dependent services during testing.
+  title: time-trial API
+  version: "1.0"
+paths:
+  /param-resp:
+    post:
+      consumes:
+      - application/json
+      description: Configures the schema used to generate response bodies when a 200
+        is returned by /sabotage or /plan/sabotage. Only statusCode=200 is supported.
+        With no body, clears the active configuration (returns {active:false}).
+      parameters:
+      - description: Response schema configuration. Omit body to clear.
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/entities.ResponseConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeSetParamResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeError'
+      summary: Set param-resp configuration
+      tags:
+      - param-resp
+  /param-resp/config:
+    get:
+      description: Returns the active response-body schema exactly as submitted. Returns
+        404 if no configuration is active.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeParamRespConfig'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeError'
+      summary: Get param-resp configuration
+      tags:
+      - param-resp
+  /plan:
+    post:
+      consumes:
+      - application/json
+      description: Loads an ordered list of sabotage steps. Steps are consumed in
+        order on GET /plan/sabotage. With no body, clears the active plan (returns
+        {active:false}).
+      parameters:
+      - description: Ordered plan. Omit body to clear.
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/handlers.planRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeSetPlan'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeError'
+      summary: Set or clear plan
+      tags:
+      - plan
+  /plan/config:
+    get:
+      description: Returns all steps of the active plan regardless of how many have
+        been consumed. Returns 404 if no plan is loaded.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.EnvelopePlanConfig'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeError'
+      summary: Get plan configuration
+      tags:
+      - plan
+  /plan/sabotage:
+    get:
+      description: |-
+        Consumes the next step from the active plan. Returns 404 if no plan is loaded, all steps are consumed, or the plan was interrupted.
+        When step code=200 and a param-resp config is active, "data" is dynamically generated — its schema depends on the active configuration. See GET /param-resp/config.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: data is either SabotageStateResponse or dynamically generated
+            (see GET /param-resp/config)
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeDynamic'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeSabotageState'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeSabotageState'
+      summary: Execute next plan step
+      tags:
+      - exec
+  /sabotage:
+    get:
+      description: |-
+        Responds with the configured HTTP code (or random 200/400/500 when code=0). Applies delay if configured.
+        When code=200 and a param-resp config is active, "data" is dynamically generated — its schema depends on the active configuration. See GET /param-resp/config.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: data is either SabotageStateResponse or dynamically generated
+            (see GET /param-resp/config)
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeDynamic'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeSabotageState'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeSabotageState'
+      summary: Execute sabotage
+      tags:
+      - exec
+  /time-trial:
+    post:
+      consumes:
+      - application/json
+      description: Sets the active forced status code and optional delay range. With
+        no body, resets to random behavior (code=0, delays=0).
+      parameters:
+      - description: Sabotage configuration. Omit body to reset.
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/handlers.sabotageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeSetSabotage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeError'
+      summary: Set sabotage configuration
+      tags:
+      - sabotage
+  /time-trial/config:
+    get:
+      description: Returns the active forced status code and delay range. code=0 means
+        random behavior.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.EnvelopeSabotageConfig'
+      summary: Get sabotage configuration
+      tags:
+      - sabotage
+swagger: "2.0"

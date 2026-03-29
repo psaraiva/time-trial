@@ -1,4 +1,4 @@
-.PHONY: deps build run fmt vet lint test coverage ci sabotage reset-sabotage help
+.PHONY: deps build run fmt vet lint test coverage ci sabotage reset-sabotage swag help
 
 BASE_URL ?= http://localhost:7777
 CODE     ?= 500
@@ -30,11 +30,8 @@ coverage: ## Generate test coverage file (coverage.out)
 	go test ./... -coverprofile=coverage.out -covermode=atomic
 	go tool cover -func=coverage.out
 
-sabotage: ## POST /sabotage with JSON body (default code=500)
-	curl -s -X POST "$(BASE_URL)/sabotage" -H "Content-Type: application/json" -d '{"code":$(CODE)}' | jq .
-
-reset-sabotage: ## POST /sabotage with empty body — reset to random
-	curl -s -X POST "$(BASE_URL)/sabotage" | jq .
+swag: ## Generate Swagger docs (requires: go install github.com/swaggo/swag/cmd/swag@latest)
+	swag init -g cmd/main.go --output docs/swagger
 
 help: ## List all available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
