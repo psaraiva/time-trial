@@ -75,8 +75,14 @@ func TestParamRespHandler_SetParamResp_Table(t *testing.T) {
 			expectErrKey: true,
 		},
 		{
-			name:         "invalid statusCode returns 400",
-			body:         `{"statusCode":500,"item":{"isColection":false,"quantity":1,"properties":[{"name":"f","type":"string","isRequired":true,"maxLength":5,"minLength":1,"propertyString":{"chars":"abc"}}]}}`,
+			name:         "invalid statusCode 0 returns 400",
+			body:         `{"statusCode":0,"item":{"isColection":false,"quantity":1,"properties":[{"name":"f","type":"string","isRequired":true,"maxLength":5,"minLength":1,"propertyString":{"chars":"abc"}}]}}`,
+			expectStatus: http.StatusBadRequest,
+			expectErrKey: true,
+		},
+		{
+			name:         "invalid statusCode 301 returns 400",
+			body:         `{"statusCode":301,"item":{"isColection":false,"quantity":1,"properties":[{"name":"f","type":"string","isRequired":true,"maxLength":5,"minLength":1,"propertyString":{"chars":"abc"}}]}}`,
 			expectStatus: http.StatusBadRequest,
 			expectErrKey: true,
 		},
@@ -154,9 +160,6 @@ func TestParamRespHandler_SetParamResp_Table(t *testing.T) {
 			if tc.expectActive {
 				if got := int(body["properties"].(float64)); got != tc.expectPropCount {
 					t.Fatalf("expected properties=%d, got %d", tc.expectPropCount, got)
-				}
-				if got := int(body["statusCode"].(float64)); got != 200 {
-					t.Fatalf("expected statusCode=200, got %d", got)
 				}
 			}
 		})

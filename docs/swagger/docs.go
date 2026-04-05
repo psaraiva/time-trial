@@ -154,7 +154,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "exec"
+                    "plan"
                 ],
                 "summary": "Execute next plan step",
                 "responses": {
@@ -192,7 +192,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "exec"
+                    "sabotage"
                 ],
                 "summary": "Execute sabotage",
                 "responses": {
@@ -227,7 +227,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "sabotage"
+                    "time-trial"
                 ],
                 "summary": "Set sabotage configuration",
                 "parameters": [
@@ -319,6 +319,9 @@ const docTemplate = `{
                 "propertyString": {
                     "$ref": "#/definitions/entities.PropertyStringConfig"
                 },
+                "propertyUUID": {
+                    "$ref": "#/definitions/entities.PropertyUUIDConfig"
+                },
                 "type": {
                     "$ref": "#/definitions/entities.PropertyType"
                 }
@@ -356,13 +359,25 @@ const docTemplate = `{
             "enum": [
                 "string",
                 "int",
-                "float"
+                "float",
+                "uuid",
+                "string-funny"
             ],
             "x-enum-varnames": [
                 "PropertyTypeString",
                 "PropertyTypeInt",
-                "PropertyTypeFloat"
+                "PropertyTypeFloat",
+                "PropertyTypeUUID",
+                "PropertyTypeStringFunny"
             ]
+        },
+        "entities.PropertyUUIDConfig": {
+            "type": "object",
+            "properties": {
+                "version": {
+                    "type": "integer"
+                }
+            }
         },
         "entities.ResponseConfig": {
             "type": "object",

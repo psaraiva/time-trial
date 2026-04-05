@@ -25,7 +25,7 @@ A minimal Go application that exposes endpoints to simulate dependent-service be
 
 The application exposes HTTP routes built with [Fiber](https://gofiber.io/). You can set a forced status code with a delay range (`POST /time-trial`), load an ordered plan of configurations (`POST /plan`), configure a response-body schema (`POST /param-resp`), and trigger executions that follow those configurations (`GET /sabotage`, `GET /plan/sabotage`). State is held in memory with lock-free atomics and mutex, safe for concurrent use.
 
-When a `param-resp` configuration is active and an execution returns **200**, the response body is generated dynamically according to the configured schema instead of the standard sabotage metadata.
+When a `param-resp` configuration is active and the execution code matches the configured `statusCode`, the response body is generated dynamically according to the configured schema instead of the standard sabotage metadata.
 
 Every response is wrapped in a standard envelope:
 
@@ -114,7 +114,7 @@ Sets the active sabotage configuration. With no body, resets to random behavior.
 
 Executes a simulated request using the active sabotage configuration. If no sabotage is active (`code=0`), responds with a random code (200, 400 or 500).
 
-When the resulting code is **200** and a `param-resp` configuration is active, the response body is generated dynamically — see [POST /param-resp](#post-param-resp).
+When the resulting code matches the `statusCode` configured in `param-resp`, the response body is generated dynamically — see [POST /param-resp](#post-param-resp).
 
 ---
 
@@ -156,7 +156,7 @@ Loads an ordered plan of sabotage configs. Each item is a full sabotage configur
 
 Executes the next step of the active plan. Returns `404` if no plan is loaded, all steps have been consumed, or the plan was interrupted.
 
-When the resulting code is **200** and a `param-resp` configuration is active, the response body is generated dynamically — see [POST /param-resp](#post-param-resp).
+When the resulting code matches the `statusCode` configured in `param-resp`, the response body is generated dynamically — see [POST /param-resp](#post-param-resp).
 
 ---
 
@@ -179,9 +179,9 @@ Returns the full active plan regardless of how many steps have been consumed. Re
 
 ### POST /param-resp
 
-Configures the schema used to generate response bodies when a `200` is returned by `/sabotage` or `/plan`. With no body, clears the active configuration.
+Configures the schema used to generate response bodies when the execution code matches the configured `statusCode`. Supports the 2xx, 4xx and 5xx families. With no body, clears the active configuration.
 
-Supported property types: `string`, `int`, `float`.
+Supported property types: `string`, `int`, `float`, `uuid`, `string-funny`.
 
 **Body:**
 ```json
@@ -192,7 +192,18 @@ Supported property types: `string`, `int`, `float`.
     "quantity": 5,
     "properties": [
       {
-        "name": "productName",
+        "name": "id",
+        "type": "uuid",
+        "isRequired": true,
+        "propertyUUID": {
+          "version": 4
+        }
+      }, {
+        "name": "name",
+        "type": "string-funny",
+        "isRequired": true
+      }, {
+        "name": "code",
         "type": "string",
         "isRequired": true,
         "maxLength": 10,
@@ -200,23 +211,21 @@ Supported property types: `string`, `int`, `float`.
         "propertyString": {
           "chars": "abcdefghijklmnopqrstuvxzABCDEFGHIJKLMNOPQRSTUVXZ"
         }
-      },
-      {
+      }, {
         "name": "value",
         "type": "float",
         "isRequired": true,
-        "maxLength": 10000,
+        "maxLength": 7777,
         "minLength": 0,
         "propertyFloat": {
           "floatPrecision": 2,
           "isAcceptNegativeValue": false
         }
-      },
-      {
+      }, {
         "name": "version",
         "type": "int",
         "isRequired": true,
-        "maxLength": 99,
+        "maxLength": 10,
         "minLength": 0,
         "propertyInt": {
           "isAcceptNegativeValue": false
@@ -242,36 +251,28 @@ Supported property types: `string`, `int`, `float`.
 | `quantity`     | Number of items to generate (ignored when `isColection` is `false`)             |
 | `properties`   | 1..N property definitions                                                       |
 
-**Common property fields:**
+The `name` field accepts only letters, digits, `_` and `-`. Fields with `isRequired: false` are included in the response with value `null`.
 
-| Field        | Description                                                                         |
-|--------------|-------------------------------------------------------------------------------------|
-| `name`       | JSON key name (letters, digits, `_`, `-` only)                                      |
-| `type`       | `"string"`, `"int"`, or `"float"`                                                   |
-| `isRequired` | `false` → field is included in the response with value `null`                       |
-| `maxLength`  | For `string`: max character length. For `int`/`float`: maximum value               |
-| `minLength`  | For `string`: min character length. For `int`/`float`: minimum value               |
+### Supported properties table
 
-**`propertyString` fields:**
+| Type            | `isRequired` | `minLength` | `maxLength` | Config              |
+|-----------------|:------------:|:-----------:|:-----------:|---------------------|
+| `string`        | ✅           | ✅          | ✅          | `propertyString`    |
+| `int`           | ✅           | ✅          | ✅          | `propertyInt`       |
+| `float`         | ✅           | ✅          | ✅          | `propertyFloat`     |
+| `uuid`          | ✅           | ❌          | ❌          | `propertyUUID`      |
+| `string-funny`  | ✅           | ❌          | ❌          | —                   |
 
-| Field   | Description                                        |
-|---------|----------------------------------------------------|
-| `chars` | Character set for generation (letters A–Z, a–z only) |
+**Custom config fields:**
 
-**`propertyInt` fields:**
-
-| Field                   | Description                         |
-|-------------------------|-------------------------------------|
-| `isAcceptNegativeValue`  | Allow negative values in generation |
-
-**`propertyFloat` fields:**
-
-| Field                   | Description                                  |
-|-------------------------|----------------------------------------------|
-| `floatPrecision`        | Number of decimal places                     |
-| `isAcceptNegativeValue`  | Allow negative values in generation          |
-
-**No body** → clears the active configuration.
+| Config             | Field                   | Description                                                                   |
+|--------------------|-------------------------|-------------------------------------------------------------------------------|
+| `propertyString`   | `chars`                 | Character set for generation (letters A–Z, a–z only)                         |
+| `propertyInt`      | `isAcceptNegativeValue` | Allow negative values in generation                                           |
+| `propertyFloat`    | `floatPrecision`        | Number of decimal places (0–5)                                                |
+| `propertyFloat`    | `isAcceptNegativeValue` | Allow negative values in generation                                           |
+| `propertyUUID`     | `version`               | UUID version: `1` (time-based), `4` (random), `7` (time-ordered)             |
+| `string-funny`     | —                       | No config. Generates `<adjective>_<object>` (e.g. `angry_spoon`, `sleepy_bucket`) |
 
 ---
 

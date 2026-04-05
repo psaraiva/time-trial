@@ -219,11 +219,9 @@ func TestExecHandlerExecPlan_Table(t *testing.T) {
 	}
 }
 
-func TestExecHandlerExec_ParamResp(t *testing.T) {
-	t.Parallel()
-
-	paramConfig := &entities.ResponseConfig{
-		StatusCode: 200,
+func makeParamConfig(statusCode int) *entities.ResponseConfig {
+	return &entities.ResponseConfig{
+		StatusCode: statusCode,
 		Item: entities.ItemConfig{
 			IsCollection: false,
 			Properties: []entities.Property{
@@ -237,34 +235,52 @@ func TestExecHandlerExec_ParamResp(t *testing.T) {
 			},
 		},
 	}
+}
+
+func TestExecHandlerExec_ParamResp(t *testing.T) {
+	t.Parallel()
 
 	tests := []struct {
 		name            string
 		stateCode       int32
-		paramRespActive bool
+		paramConfig     *entities.ResponseConfig
 		expectStatus    int
 		expectGenerated bool
 	}{
 		{
-			name:            "code 200 with param-resp active returns generated body",
+			name:            "code 200 with param-resp statusCode 200 returns generated body",
 			stateCode:       200,
-			paramRespActive: true,
+			paramConfig:     makeParamConfig(200),
 			expectStatus:    http.StatusOK,
 			expectGenerated: true,
 		},
 		{
 			name:            "code 200 without param-resp returns standard body",
 			stateCode:       200,
-			paramRespActive: false,
+			paramConfig:     nil,
 			expectStatus:    http.StatusOK,
 			expectGenerated: false,
 		},
 		{
-			name:            "code 500 with param-resp active returns standard body",
+			name:            "code 500 with param-resp statusCode 500 returns generated body",
 			stateCode:       500,
-			paramRespActive: true,
+			paramConfig:     makeParamConfig(500),
+			expectStatus:    http.StatusInternalServerError,
+			expectGenerated: true,
+		},
+		{
+			name:            "code 500 with param-resp statusCode 200 returns standard body",
+			stateCode:       500,
+			paramConfig:     makeParamConfig(200),
 			expectStatus:    http.StatusInternalServerError,
 			expectGenerated: false,
+		},
+		{
+			name:            "code 400 with param-resp statusCode 400 returns generated body",
+			stateCode:       400,
+			paramConfig:     makeParamConfig(400),
+			expectStatus:    http.StatusBadRequest,
+			expectGenerated: true,
 		},
 	}
 
@@ -274,8 +290,8 @@ func TestExecHandlerExec_ParamResp(t *testing.T) {
 
 			app, state, _, pr := newExecApp(t)
 			state.SetCode(tc.stateCode)
-			if tc.paramRespActive {
-				pr.Set(paramConfig)
+			if tc.paramConfig != nil {
+				pr.Set(tc.paramConfig)
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "/exec", nil)
@@ -310,11 +326,9 @@ func TestExecHandlerExec_ParamResp(t *testing.T) {
 	}
 }
 
-func TestExecHandlerExecPlan_ParamResp(t *testing.T) {
-	t.Parallel()
-
-	paramConfig := &entities.ResponseConfig{
-		StatusCode: 200,
+func makePlanParamConfig(statusCode int) *entities.ResponseConfig {
+	return &entities.ResponseConfig{
+		StatusCode: statusCode,
 		Item: entities.ItemConfig{
 			IsCollection: true,
 			Quantity:     2,
@@ -329,34 +343,52 @@ func TestExecHandlerExecPlan_ParamResp(t *testing.T) {
 			},
 		},
 	}
+}
+
+func TestExecHandlerExecPlan_ParamResp(t *testing.T) {
+	t.Parallel()
 
 	tests := []struct {
-		name            string
-		planCode        int32
-		paramRespActive bool
-		expectStatus    int
-		expectArray     bool
+		name         string
+		planCode     int32
+		paramConfig  *entities.ResponseConfig
+		expectStatus int
+		expectArray  bool
 	}{
 		{
-			name:            "plan code 200 with param-resp returns generated collection",
-			planCode:        200,
-			paramRespActive: true,
-			expectStatus:    http.StatusOK,
-			expectArray:     true,
+			name:         "plan code 200 with param-resp statusCode 200 returns generated collection",
+			planCode:     200,
+			paramConfig:  makePlanParamConfig(200),
+			expectStatus: http.StatusOK,
+			expectArray:  true,
 		},
 		{
-			name:            "plan code 200 without param-resp returns standard body",
-			planCode:        200,
-			paramRespActive: false,
-			expectStatus:    http.StatusOK,
-			expectArray:     false,
+			name:         "plan code 200 without param-resp returns standard body",
+			planCode:     200,
+			paramConfig:  nil,
+			expectStatus: http.StatusOK,
+			expectArray:  false,
 		},
 		{
-			name:            "plan code 400 with param-resp returns standard body",
-			planCode:        400,
-			paramRespActive: true,
-			expectStatus:    http.StatusBadRequest,
-			expectArray:     false,
+			name:         "plan code 400 with param-resp statusCode 200 returns standard body",
+			planCode:     400,
+			paramConfig:  makePlanParamConfig(200),
+			expectStatus: http.StatusBadRequest,
+			expectArray:  false,
+		},
+		{
+			name:         "plan code 400 with param-resp statusCode 400 returns generated collection",
+			planCode:     400,
+			paramConfig:  makePlanParamConfig(400),
+			expectStatus: http.StatusBadRequest,
+			expectArray:  true,
+		},
+		{
+			name:         "plan code 500 with param-resp statusCode 500 returns generated collection",
+			planCode:     500,
+			paramConfig:  makePlanParamConfig(500),
+			expectStatus: http.StatusInternalServerError,
+			expectArray:  true,
 		},
 	}
 
@@ -368,8 +400,8 @@ func TestExecHandlerExecPlan_ParamResp(t *testing.T) {
 			s := entities.NewState()
 			s.SetCode(tc.planCode)
 			plan.Set([]*entities.State{s})
-			if tc.paramRespActive {
-				pr.Set(paramConfig)
+			if tc.paramConfig != nil {
+				pr.Set(tc.paramConfig)
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "/exec/plan", nil)

@@ -46,6 +46,27 @@ func makeFloatProperty(name string, min, max, precision int, acceptNeg bool) Pro
 	}
 }
 
+func makeStringFunnyProperty(name string) Property {
+	return Property{
+		PropertyBase: PropertyBase{
+			Name:       name,
+			Type:       PropertyTypeStringFunny,
+			IsRequired: true,
+		},
+	}
+}
+
+func makeUUIDProperty(name string, version int) Property {
+	return Property{
+		PropertyBase: PropertyBase{
+			Name:       name,
+			Type:       PropertyTypeUUID,
+			IsRequired: true,
+		},
+		PropertyUUID: &PropertyUUIDConfig{Version: version},
+	}
+}
+
 func validConfig() *ResponseConfig {
 	return &ResponseConfig{
 		StatusCode: 200,
@@ -75,10 +96,23 @@ func TestValidateResponseConfig_StatusCode(t *testing.T) {
 		statusCode int
 		wantErr    bool
 	}{
+		// 2xx valid
 		{name: "200 ok", statusCode: 200, wantErr: false},
-		{name: "400 rejected", statusCode: 400, wantErr: true},
-		{name: "500 rejected", statusCode: 500, wantErr: true},
+		{name: "201 ok", statusCode: 201, wantErr: false},
+		{name: "204 ok", statusCode: 204, wantErr: false},
+		// 4xx valid
+		{name: "400 ok", statusCode: 400, wantErr: false},
+		{name: "401 ok", statusCode: 401, wantErr: false},
+		{name: "404 ok", statusCode: 404, wantErr: false},
+		{name: "422 ok", statusCode: 422, wantErr: false},
+		// 5xx valid
+		{name: "500 ok", statusCode: 500, wantErr: false},
+		{name: "503 ok", statusCode: 503, wantErr: false},
+		// invalid
 		{name: "0 rejected", statusCode: 0, wantErr: true},
+		{name: "100 rejected", statusCode: 100, wantErr: true},
+		{name: "301 rejected", statusCode: 301, wantErr: true},
+		{name: "600 rejected", statusCode: 600, wantErr: true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -175,6 +209,8 @@ func TestValidateResponseConfig_PropertyType(t *testing.T) {
 		{name: "string", ptype: PropertyTypeString, wantErr: false},
 		{name: "int", ptype: PropertyTypeInt, wantErr: false},
 		{name: "float", ptype: PropertyTypeFloat, wantErr: false},
+		{name: "uuid", ptype: PropertyTypeUUID, wantErr: false},
+		{name: "string-funny", ptype: PropertyTypeStringFunny, wantErr: false},
 		{name: "invalid", ptype: "bool", wantErr: true},
 	}
 	for _, tc := range tests {
@@ -188,6 +224,10 @@ func TestValidateResponseConfig_PropertyType(t *testing.T) {
 				prop = makeIntProperty("field", 0, 10, false)
 			case PropertyTypeFloat:
 				prop = makeFloatProperty("field", 0, 10, 2, false)
+			case PropertyTypeUUID:
+				prop = makeUUIDProperty("field", 4)
+			case PropertyTypeStringFunny:
+				prop = makeStringFunnyProperty("field")
 			default:
 				prop = Property{PropertyBase: PropertyBase{Name: "field", Type: tc.ptype, MinLength: 0, MaxLength: 10}}
 			}
@@ -260,6 +300,10 @@ func TestValidateResponseConfig_MissingTypeConfig(t *testing.T) {
 			name: "float without propertyFloat",
 			prop: Property{PropertyBase: PropertyBase{Name: "f", Type: PropertyTypeFloat, MinLength: 0, MaxLength: 10}},
 		},
+		{
+			name: "uuid without propertyUUID",
+			prop: Property{PropertyBase: PropertyBase{Name: "f", Type: PropertyTypeUUID}},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -290,6 +334,59 @@ func TestValidateResponseConfig_FloatPrecisionBounds(t *testing.T) {
 			t.Parallel()
 			c := validConfig()
 			c.Item.Properties = []Property{makeFloatProperty("value", 0, 10, tc.precision, false)}
+			err := ValidateResponseConfig(c)
+			if tc.wantErr && err == nil {
+				t.Error("expected error, got nil")
+			}
+			if !tc.wantErr && err != nil {
+				t.Errorf("expected no error, got: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateResponseConfig_StringFunny(t *testing.T) {
+	t.Parallel()
+	t.Run("valid", func(t *testing.T) {
+		t.Parallel()
+		c := validConfig()
+		c.Item.Properties = []Property{makeStringFunnyProperty("label")}
+		if err := ValidateResponseConfig(c); err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+	})
+	t.Run("ignores minLength greater than maxLength", func(t *testing.T) {
+		t.Parallel()
+		c := validConfig()
+		prop := makeStringFunnyProperty("label")
+		prop.MinLength = 100
+		prop.MaxLength = 0
+		c.Item.Properties = []Property{prop}
+		if err := ValidateResponseConfig(c); err != nil {
+			t.Errorf("expected no error for string-funny ignoring min/max, got: %v", err)
+		}
+	})
+}
+
+func TestValidateResponseConfig_UUIDVersion(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		version int
+		wantErr bool
+	}{
+		{name: "version 1 ok", version: 1, wantErr: false},
+		{name: "version 4 ok", version: 4, wantErr: false},
+		{name: "version 7 ok", version: 7, wantErr: false},
+		{name: "version 0 rejected", version: 0, wantErr: true},
+		{name: "version 2 rejected", version: 2, wantErr: true},
+		{name: "version 5 rejected", version: 5, wantErr: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c := validConfig()
+			c.Item.Properties = []Property{makeUUIDProperty("id", tc.version)}
 			err := ValidateResponseConfig(c)
 			if tc.wantErr && err == nil {
 				t.Error("expected error, got nil")
