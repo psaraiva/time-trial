@@ -9,6 +9,8 @@ package main
 
 import (
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	"github.com/psaraiva/time-trial/docs/swagger"
@@ -63,6 +65,18 @@ func main() {
 	}
 
 	swagger.SwaggerInfo.Host = host + ":" + port
+
+	pprofPort := os.Getenv("TIME_TRIAL_PPROF_PORT")
+	if pprofPort == "" {
+		pprofPort = "6060"
+	}
+
+	go func() {
+		log.Printf("pprof listening on :%s", pprofPort)
+		if err := http.ListenAndServe(":"+pprofPort, nil); err != nil {
+			log.Printf("pprof error: %v", err)
+		}
+	}()
 
 	log.Printf("Server listening on :%s", port)
 	if err := buildApp().Listen(":" + port); err != nil {

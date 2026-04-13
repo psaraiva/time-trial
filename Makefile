@@ -1,16 +1,26 @@
-.PHONY: deps build run fmt vet lint test coverage ci sabotage reset-sabotage swag help
+.PHONY: deps build run-webserver run-loadtest profile fmt vet lint test coverage ci sabotage reset-sabotage swag help
 
-BASE_URL ?= http://localhost:7777
-CODE     ?= 500
+BASE_URL   ?= http://localhost:7777
+CODE       ?= 500
+URL_TARGET ?= http://localhost:7777/sabotage
+N          ?= 1000
+C          ?= 10
+SECONDS    ?= 30
 
 deps: ## Download and tidy Go dependencies
 	go mod tidy
 
 build: ## Compile binary to bin/server
-	go build -o bin/server ./cmd/
+	go build -o bin/server ./cmd/webserver/
 
-run: ## Run server locally
-	go run ./cmd/
+run-webserver: ## Run server locally
+	go run ./cmd/webserver/
+
+run-loadtest: ## Run load test (flags: URL, N, C)
+	go run ./cmd/loadtest/ -url $(URL_TARGET) -n $(N) -c $(C)
+
+profile: ## Capture CPU pprof profile for SECONDS seconds and open web UI on :8080
+	go tool pprof -http=:8080 http://localhost:6060/debug/pprof/profile?seconds=$(SECONDS)
 
 fmt: ## Format code with gofmt -s
 	gofmt -s -w .

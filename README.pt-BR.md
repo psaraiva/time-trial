@@ -46,13 +46,13 @@ Toda resposta é encapsulada em um envelope padrão:
 
 ```bash
 make deps
-make run
+make run-webserver
 ```
 
 O servidor escuta na porta `7777` por padrão. Sobrescreva com a variável de ambiente `TIME_TRIAL_API_PORT`:
 
 ```bash
-TIME_TRIAL_API_PORT=8080 make run
+TIME_TRIAL_API_PORT=8080 make run-webserver
 ```
 
 ## Swagger UI
@@ -285,17 +285,63 @@ Retorna a configuração atual do param-resp exatamente como foi submetida. Reto
 ## Targets do Makefile
 
 ```
-make deps      Baixa e organiza as dependências Go
-make build     Compila o binário em bin/server
-make run       Executa o servidor localmente
-make swag      Gera a documentação Swagger (requer o CLI swag)
-make vet       Executa go vet
-make lint      Executa golangci-lint
-make ci        Executa vet, lint e testes (espelha o pipeline de CI)
-make test      Roda testes com race detector
-make coverage  Gera relatório de cobertura
-make help      Lista todos os targets com suas descrições
+make deps              Baixa e organiza as dependências Go
+make build             Compila o binário em bin/server
+make run-webserver     Executa o servidor localmente
+make run-loadtest      Executa load test contra /sabotage (flags: URL_TARGET, N, C)
+make profile           Captura CPU profile e abre UI web em :8080 (flag: SECONDS)
+make swag              Gera a documentação Swagger (requer o CLI swag)
+make vet               Executa go vet
+make lint              Executa golangci-lint
+make ci                Executa vet, lint e testes (espelha o pipeline de CI)
+make test              Roda testes com race detector
+make coverage          Gera relatório de cobertura
+make help              Lista todos os targets com suas descrições
 ```
+
+---
+
+## Profiling com pprof
+
+O servidor expõe um endpoint [pprof](https://pkg.go.dev/net/http/pprof) em uma porta separada (padrão `6060`, sobrescrito com `TIME_TRIAL_PPROF_PORT`). Ele roda em uma goroutine em segundo plano junto ao servidor Fiber e dá acesso a dados de profiling do runtime sem afetar a porta da aplicação.
+
+### Profiles disponíveis
+
+| URL | Descrição |
+|-----|-----------|
+| `http://localhost:6060/debug/pprof/` | Índice com todos os profiles disponíveis |
+| `http://localhost:6060/debug/pprof/profile?seconds=30` | Uso de CPU (amostras por N segundos) |
+| `http://localhost:6060/debug/pprof/heap` | Alocações de memória |
+| `http://localhost:6060/debug/pprof/goroutine` | Todas as goroutines ativas e suas stacks |
+| `http://localhost:6060/debug/pprof/block` | Goroutines bloqueadas em sincronização |
+| `http://localhost:6060/debug/pprof/mutex` | Contenção de mutex |
+
+### Capturando um CPU profile sob carga
+
+Abra três terminais:
+
+```bash
+# Terminal 1 — inicia o servidor
+make run-webserver
+
+# Terminal 2 — inicia a captura de CPU (bloqueia por SECONDS, depois abre UI web em :8080)
+make profile SECONDS=30
+
+# Terminal 3 — dispara a carga durante a janela de captura
+make run-loadtest N=5000 C=50
+```
+
+Após a janela de captura, `http://localhost:8080` abre automaticamente com flame graph, call graph e visão das top funções.
+
+### Profiles recomendados por cenário
+
+| Cenário | Profile a usar | O que observar |
+|---------|---------------|----------------|
+| Sem delay (throughput máximo) | `profile` (CPU) | Funções no topo do flame graph |
+| Sem delay (throughput máximo) | `goroutine` | Crescimento da contagem de goroutines sob carga |
+| Delay 200–750 ms | `heap` | `inuse_objects` crescendo durante a carga |
+| Delay 200–750 ms | `goroutine` | Pico de goroutines enquanto requisições estão suspensas |
+| Delay 200–750 ms | `block` | Onde as goroutines estão bloqueando |
 
 ---
 
