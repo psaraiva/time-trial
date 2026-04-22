@@ -27,6 +27,8 @@ definitions:
         $ref: '#/definitions/entities.PropertyIntConfig'
       propertyString:
         $ref: '#/definitions/entities.PropertyStringConfig'
+      propertyUUID:
+        $ref: '#/definitions/entities.PropertyUUIDConfig'
       type:
         $ref: '#/definitions/entities.PropertyType'
     type: object
@@ -52,11 +54,20 @@ definitions:
     - string
     - int
     - float
+    - uuid
+    - string-funny
     type: string
     x-enum-varnames:
     - PropertyTypeString
     - PropertyTypeInt
     - PropertyTypeFloat
+    - PropertyTypeUUID
+    - PropertyTypeStringFunny
+  entities.PropertyUUIDConfig:
+    properties:
+      version:
+        type: integer
+    type: object
   entities.ResponseConfig:
     properties:
       item:
@@ -363,7 +374,7 @@ paths:
             $ref: '#/definitions/handlers.EnvelopeSabotageState'
       summary: Execute next plan step
       tags:
-      - exec
+      - plan
   /sabotage:
     get:
       description: |-
@@ -387,7 +398,7 @@ paths:
             $ref: '#/definitions/handlers.EnvelopeSabotageState'
       summary: Execute sabotage
       tags:
-      - exec
+      - sabotage
   /time-trial:
     post:
       consumes:
@@ -413,7 +424,7 @@ paths:
             $ref: '#/definitions/handlers.EnvelopeError'
       summary: Set sabotage configuration
       tags:
-      - sabotage
+      - time-trial
   /time-trial/config:
     get:
       description: Returns the active forced status code and delay range. code=0 means

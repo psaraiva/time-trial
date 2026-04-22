@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/rand"
 
+	"github.com/google/uuid"
 	"github.com/psaraiva/time-trial/internal/entities"
 )
 
@@ -40,8 +41,37 @@ func generateValue(prop entities.Property) interface{} {
 		return generateInt(prop)
 	case entities.PropertyTypeFloat:
 		return generateFloat(prop)
+	case entities.PropertyTypeUUID:
+		return generateUUID(prop)
+	case entities.PropertyTypeStringFunny:
+		return generateStringFunny()
 	}
 	return nil
+}
+
+func generateStringFunny() string {
+	adj := adjectives[rand.Intn(len(adjectives))]
+	obj := objects[rand.Intn(len(objects))]
+	return adj + "_" + obj
+}
+
+func generateUUID(prop entities.Property) string {
+	switch prop.PropertyUUID.Version {
+	case 1:
+		id, err := uuid.NewUUID()
+		if err != nil {
+			return uuid.NewString()
+		}
+		return id.String()
+	case 7:
+		id, err := uuid.NewV7()
+		if err != nil {
+			return uuid.NewString()
+		}
+		return id.String()
+	default:
+		return uuid.NewString()
+	}
 }
 
 func generateString(prop entities.Property) string {

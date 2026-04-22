@@ -2,6 +2,8 @@ package generator
 
 import (
 	"encoding/json"
+	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -309,6 +311,130 @@ func TestGenerate_Float_NegativeMaxClamped(t *testing.T) {
 	}
 	if val != 0 {
 		t.Errorf("expected 0 when both min and max are clamped to 0, got %f", val)
+	}
+}
+
+func makeUUIDProp(name string, version int) entities.Property {
+	return entities.Property{
+		PropertyBase: entities.PropertyBase{
+			Name:       name,
+			Type:       entities.PropertyTypeUUID,
+			IsRequired: true,
+		},
+		PropertyUUID: &entities.PropertyUUIDConfig{Version: version},
+	}
+}
+
+func makeStringFunnyProp(name string) entities.Property {
+	return entities.Property{
+		PropertyBase: entities.PropertyBase{
+			Name:       name,
+			Type:       entities.PropertyTypeStringFunny,
+			IsRequired: true,
+		},
+	}
+}
+
+var uuidRegexp = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+var funnyRegexp = regexp.MustCompile(`^[a-z]+_[a-z]+$`)
+
+func TestGenerate_UUID_Format(t *testing.T) {
+	t.Parallel()
+	for _, version := range []int{1, 4, 7} {
+		version := version
+		t.Run(fmt.Sprintf("v%d", version), func(t *testing.T) {
+			t.Parallel()
+			prop := makeUUIDProp("id", version)
+			config := &entities.ResponseConfig{
+				StatusCode: 200,
+				Item:       entities.ItemConfig{Properties: []entities.Property{prop}},
+			}
+			for i := 0; i < 20; i++ {
+				result := Generate(config)
+				item := result.(map[string]interface{})
+				s, ok := item["id"].(string)
+				if !ok {
+					t.Fatalf("expected string value, got %T", item["id"])
+				}
+				if !uuidRegexp.MatchString(s) {
+					t.Errorf("v%d: %q is not a valid UUID format", version, s)
+				}
+			}
+		})
+	}
+}
+
+func TestGenerate_UUID_Version(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		version      int
+		expectNibble byte
+	}{
+		{version: 1, expectNibble: '1'},
+		{version: 4, expectNibble: '4'},
+		{version: 7, expectNibble: '7'},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(fmt.Sprintf("v%d_nibble", tc.version), func(t *testing.T) {
+			t.Parallel()
+			prop := makeUUIDProp("id", tc.version)
+			config := &entities.ResponseConfig{
+				StatusCode: 200,
+				Item:       entities.ItemConfig{Properties: []entities.Property{prop}},
+			}
+			for i := 0; i < 20; i++ {
+				result := Generate(config)
+				item := result.(map[string]interface{})
+				s := item["id"].(string)
+				// UUID format: xxxxxxxx-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx
+				// version nibble is at index 14
+				if len(s) < 15 {
+					t.Fatalf("UUID too short: %q", s)
+				}
+				if s[14] != tc.expectNibble {
+					t.Errorf("v%d: expected version nibble %c at index 14, got %c in %q", tc.version, tc.expectNibble, s[14], s)
+				}
+			}
+		})
+	}
+}
+
+func TestGenerate_StringFunny_Format(t *testing.T) {
+	t.Parallel()
+	prop := makeStringFunnyProp("label")
+	config := &entities.ResponseConfig{
+		StatusCode: 200,
+		Item:       entities.ItemConfig{Properties: []entities.Property{prop}},
+	}
+	for i := 0; i < 50; i++ {
+		result := Generate(config)
+		item := result.(map[string]interface{})
+		s, ok := item["label"].(string)
+		if !ok {
+			t.Fatalf("expected string value, got %T", item["label"])
+		}
+		if !funnyRegexp.MatchString(s) {
+			t.Errorf("generated value %q does not match <adjective>_<name> pattern", s)
+		}
+	}
+}
+
+func TestGenerate_StringFunny_Variety(t *testing.T) {
+	t.Parallel()
+	prop := makeStringFunnyProp("label")
+	config := &entities.ResponseConfig{
+		StatusCode: 200,
+		Item:       entities.ItemConfig{Properties: []entities.Property{prop}},
+	}
+	seen := make(map[string]struct{})
+	for i := 0; i < 200; i++ {
+		result := Generate(config)
+		item := result.(map[string]interface{})
+		seen[item["label"].(string)] = struct{}{}
+	}
+	if len(seen) < 5 {
+		t.Errorf("expected variety in generated names, got only %d distinct values in 200 runs", len(seen))
 	}
 }
 

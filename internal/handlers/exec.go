@@ -39,8 +39,8 @@ func (h *ExecHandler) Exec(c *fiber.Ctx) error {
 
 	applyDelay(h.state)
 
-	if code == 200 && h.paramResp.IsActive() {
-		return c.Status(code).JSON(generator.Generate(h.paramResp.Get()))
+	if cfg := h.paramResp.Get(); cfg != nil && code == cfg.StatusCode {
+		return c.Status(code).JSON(generator.Generate(cfg))
 	}
 
 	return c.Status(code).JSON(fiber.Map{

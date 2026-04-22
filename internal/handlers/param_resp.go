@@ -16,7 +16,7 @@ func NewParamRespHandler(paramResp *entities.ParamResp) *ParamRespHandler {
 // SetParamResp configures the dynamic response-body schema.
 //
 //	@Summary		Set param-resp configuration
-//	@Description	Configures the schema used to generate response bodies when a 200 is returned by /sabotage or /plan/sabotage. Only statusCode=200 is supported. With no body, clears the active configuration (returns {active:false}).
+//	@Description	Configures the schema used to generate response bodies when the execution code matches the configured statusCode (supports 2xx, 4xx and 5xx families). With no body, clears the active configuration (returns {active:false}).
 //	@Tags			param-resp
 //	@Accept			json
 //	@Produce		json

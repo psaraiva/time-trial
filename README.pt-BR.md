@@ -181,7 +181,7 @@ Retorna o plano completo ativo, independente de quantos passos já foram consumi
 
 Configura o schema usado para gerar o body da resposta quando um `200` é retornado por `/sabotage` ou `/plan`. Sem corpo, limpa a configuração ativa.
 
-Tipos de propriedades suportados: `string`, `int`, `float`.
+Tipos de propriedades suportados: `string`, `int`, `float`, `uuid`, `string-funny`.
 
 **Body:**
 ```json
@@ -192,7 +192,18 @@ Tipos de propriedades suportados: `string`, `int`, `float`.
     "quantity": 5,
     "properties": [
       {
-        "name": "productName",
+        "name": "id",
+        "type": "uuid",
+        "isRequired": true,
+        "propertyUUID": {
+          "version": 4
+        }
+      }, {
+        "name": "name",
+        "type": "string-funny",
+        "isRequired": true
+      }, {
+        "name": "code",
         "type": "string",
         "isRequired": true,
         "maxLength": 10,
@@ -200,23 +211,21 @@ Tipos de propriedades suportados: `string`, `int`, `float`.
         "propertyString": {
           "chars": "abcdefghijklmnopqrstuvxzABCDEFGHIJKLMNOPQRSTUVXZ"
         }
-      },
-      {
+      }, {
         "name": "value",
         "type": "float",
         "isRequired": true,
-        "maxLength": 10000,
+        "maxLength": 7777,
         "minLength": 0,
         "propertyFloat": {
           "floatPrecision": 2,
           "isAcceptNegativeValue": false
         }
-      },
-      {
+      }, {
         "name": "version",
         "type": "int",
         "isRequired": true,
-        "maxLength": 99,
+        "maxLength": 10,
         "minLength": 0,
         "propertyInt": {
           "isAcceptNegativeValue": false
@@ -227,51 +236,43 @@ Tipos de propriedades suportados: `string`, `int`, `float`.
 }
 ```
 
-**Campos de topo:**
+**Campos raiz:**
 
-| Campo        | Descrição                                    |
-|--------------|----------------------------------------------|
-| `statusCode` | Deve ser `200` (único valor suportado)        |
-| `item`       | Descreve o item ou coleção a ser gerado       |
+| Campo        | Descrição                                                                                                  |
+|--------------|------------------------------------------------------------------------------------------------------------|
+| `statusCode` | Deve ser `200` (único valor suportado)                                                                     |
+| `item`       | Descreve o item ou coleção a ser gerado                                                                    |
 
 **Campos de `item`:**
 
-| Campo          | Descrição                                                                           |
-|----------------|-------------------------------------------------------------------------------------|
-| `isColection`  | `true` → retorna array JSON `[]`; `false` → retorna objeto único `{}`              |
-| `quantity`     | Total de itens a gerar (ignorado quando `isColection` é `false`)                    |
-| `properties`   | 1..N definições de propriedade                                                      |
+| Campo          | Descrição                                                                                                |
+|----------------|----------------------------------------------------------------------------------------------------------|
+| `isColection`  | `true` → retorna array JSON `[]`; `false` → retorna objeto único `{}`                                    |
+| `quantity`     | Total de itens a gerar (ignorado quando `isColection` é `false`)                                         |
+| `properties`   | 1..N definições de propriedade                                                                           |
 
-**Campos comuns de propriedade:**
+O campo `name` aceita apenas letras, dígitos, `_` e `-`. Campos com `isRequired: false` são incluídos na resposta com valor `null`.
 
-| Campo        | Descrição                                                                           |
-|--------------|-------------------------------------------------------------------------------------|
-| `name`       | Nome da chave JSON (letras, dígitos, `_`, `-`)                                      |
-| `type`       | `"string"`, `"int"` ou `"float"`                                                    |
-| `isRequired` | `false` → campo incluído na resposta com valor `null`                               |
-| `maxLength`  | Para `string`: comprimento máximo. Para `int`/`float`: valor máximo                |
-| `minLength`  | Para `string`: comprimento mínimo. Para `int`/`float`: valor mínimo                |
+### Tabela de propriedades suportadas
 
-**Campos de `propertyString`:**
+| Tipo            | `isRequired` | `minLength` | `maxLength` | Config              |
+|-----------------|:------------:|:-----------:|:-----------:|---------------------|
+| `string`        | ✅           | ✅          | ✅          | `propertyString`    |
+| `int`           | ✅           | ✅          | ✅          | `propertyInt`       |
+| `float`         | ✅           | ✅          | ✅          | `propertyFloat`     |
+| `uuid`          | ✅           | ❌          | ❌          | `propertyUUID`      |
+| `string-funny`  | ✅           | ❌          | ❌          | —                   |
 
-| Campo   | Descrição                                                    |
-|---------|--------------------------------------------------------------|
-| `chars` | Conjunto de caracteres para geração (somente letras A–Z, a–z) |
+**Campos de configuração personalizada:**
 
-**Campos de `propertyInt`:**
-
-| Campo                   | Descrição                              |
-|-------------------------|----------------------------------------|
-| `isAcceptNegativeValue`  | Permite valores negativos na geração   |
-
-**Campos de `propertyFloat`:**
-
-| Campo                   | Descrição                              |
-|-------------------------|----------------------------------------|
-| `floatPrecision`        | Total de casas decimais                |
-| `isAcceptNegativeValue`  | Permite valores negativos na geração   |
-
-**Sem corpo** → limpa a configuração ativa.
+| Config             | Campo                   | Descrição                                                                     |
+|--------------------|-------------------------|-------------------------------------------------------------------------------|
+| `propertyString`   | `chars`                 | Conjunto de caracteres para geração (somente letras A–Z, a–z)                 |
+| `propertyInt`      | `isAcceptNegativeValue` | Permite valores negativos na geração                                          |
+| `propertyFloat`    | `floatPrecision`        | Total de casas decimais (0–5)                                                 |
+| `propertyFloat`    | `isAcceptNegativeValue` | Permite valores negativos na geração                                          |
+| `propertyUUID`     | `version`               | Versão do UUID: `1` (baseado em tempo), `4` (aleatório), `7` (ordenado)       |
+| `string-funny`     | —                       | Sem config. Gera `<adjetivo>_<objeto>` (ex: `angry_spoon`, `sleepy_bucket`)   |
 
 ---
 
